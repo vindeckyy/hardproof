@@ -1,0 +1,40 @@
+{
+  "name": "hardproof",
+  "version": "0.1.0",
+  "description": "Evidence-gated verification for coding agents: freeze the contract, implement, then prove it with a fresh verifier and a gate that re-runs the checks.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "hardproof": "./bin/hardproof.mjs"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "skill/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "coding-agent",
+    "agent-skills",
+    "verification",
+    "code-review",
+    "claude-code",
+    "opencode",
+    "codex"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vindeckyy/hardproof.git"
+  },
+  "homepage": "https://github.com/vindeckyy/hardproof#readme",
+  "bugs": {
+    "url": "https://github.com/vindeckyy/hardproof/issues"
+  }
+}
