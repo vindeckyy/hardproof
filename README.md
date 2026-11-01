@@ -126,7 +126,7 @@ The verifier is instructed to attack the diff: edge cases, callers, regressions,
 | `hardproof brief` | Print the factual brief for the verifier |
 | `hardproof verdict pass\|fail` | Record a verifier decision |
 | `hardproof gate` | Final proof: fresh verdict, checks, scope |
-| `hardproof doctor` | Show install and run state |
+| `hardproof doctor` | Show install and run state; report drift in installed skills |
 | `hardproof install <provider>` | Install the skill and verifier |
 | `hardproof uninstall <provider>` | Remove them |
 
@@ -142,6 +142,8 @@ Options: `--kind` (`bug`, `feature`, `refactor`), `--request` for the user's ver
 | Generic Agent Skills | `generic` | — | `.agents` or `--dir` |
 
 The verification path varies by host: Claude Code and OpenCode get a native subagent. Codex gets a `hardproof-verifier` skill to invoke in a fresh process. Any host that can read a `SKILL.md` can use the generic install.
+
+`hardproof doctor` regenerates the expected install from the current source and compares it with the installed files. If the source changes and the installed copy does not, it reports `DRIFT`; reinstall the provider to repair it.
 
 ## How the proof works
 
@@ -159,6 +161,7 @@ The tree hash covers the baseline commit, `HEAD`, and every changed, staged, del
 - **Independence is a workflow rule, not a security boundary.** A determined agent could forge a verdict file or rewrite the contract lock in `.proof/`. The gate catches drift, missing evidence, and accidental edits, not a malicious local process.
 - **The checks are only as good as the contract.** A trivial check passes trivially. A red baseline proves a check can fail, not that it fails for the right reason; the stated cause and the verifier close that gap. The verifier cannot invent a domain oracle.
 - **The test review is a certification, not an automatic proof.** It forces the tester to look at every test change; it does not parse assertions for you.
+- **Install drift detection is not tamper-proof.** The manifest holds plain hashes. It catches stale or edited installs, not a process that rewrites both the files and the manifest.
 - **Checks must not mutate tracked files.** Snapshot updates should be committed before the final gate.
 - **The checks run shell commands from `.proof/task.json`.** Review that file like any script an agent wrote.
 - **Git is required.** Scope and freshness depend on working-tree state. Untracked files and test edits present at init are counted as part of the run; remove or scope unrelated ones first.

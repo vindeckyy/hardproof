@@ -29,7 +29,7 @@ import {
   treeHash,
   writeJson,
 } from './lib.mjs';
-import { detectInstalls } from './install.mjs';
+import { checkInstall, detectInstalls } from './install.mjs';
 
 function rel(root, file) {
   return relative(root, file) || file;
@@ -624,7 +624,11 @@ export function cmdDoctor(options) {
     problems.push('no provider install');
   } else {
     for (const item of installs) {
-      console.log(`install  ${item.provider}  ${item.scope}  ${item.path}`);
+      const status = checkInstall(item);
+      console.log(
+        `install  ${item.provider}  ${item.scope}  ${item.path}  ${status.ok ? 'ok' : `DRIFT: ${status.reason}`}`,
+      );
+      if (!status.ok) problems.push(`install drift: ${item.provider} ${status.reason}`);
     }
   }
 

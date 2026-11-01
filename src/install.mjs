@@ -1,6 +1,7 @@
+import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { UserError, VERSION, tryRepoRoot } from './lib.mjs';
 
@@ -111,13 +112,23 @@ ${verifier}
 `;
 }
 
-function manifest(provider, scope) {
+function hashContent(content) {
+  return createHash('sha256').update(content).digest('hex');
+}
+
+function manifest(provider, scope, files, root) {
   return {
     name: SKILL_NAME,
     version: VERSION,
     provider,
     scope,
     installedAt: new Date().toISOString(),
+    files: Object.fromEntries(
+      files.map((file) => [
+        relative(root, file.path).split('\\').join('/'),
+        hashContent(file.content),
+      ]),
+    ),
   };
 }
 
@@ -163,21 +174,13 @@ function installTargets(provider, root) {
   return targets;
 }
 
-export function cmdInstall(providerName, options) {
-  if (!providerName) {
-    throw new UserError(`choose a provider: ${PROVIDER_NAMES.join(', ')}.`);
-  }
-
-  const { provider, root, scope } = rootFor(providerName, options);
+function installFiles(providerName, root) {
+  const provider = PROVIDERS[providerName];
   const verifier = readSkill('references/verifier.md');
   const skillDir = join(root, 'skills', SKILL_NAME);
   const files = [
     { path: join(skillDir, 'SKILL.md'), content: readSkill('SKILL.md') },
     { path: join(skillDir, 'references', 'verifier.md'), content: verifier },
-    {
-      path: join(skillDir, '.hardproof-install.json'),
-      content: `${JSON.stringify(manifest(providerName, scope), null, 2)}\n`,
-    },
   ];
 
   if (provider.agent === 'claude') {
@@ -196,6 +199,23 @@ export function cmdInstall(providerName, options) {
       content: verifierSkill(verifier),
     });
   }
+
+  return files;
+}
+
+export function cmdInstall(providerName, options) {
+  if (!providerName) {
+    throw new UserError(`choose a provider: ${PROVIDER_NAMES.join(', ')}.`);
+  }
+
+  const { provider, root, scope } = rootFor(providerName, options);
+  const skillDir = join(root, 'skills', SKILL_NAME);
+  const files = installFiles(providerName, root);
+
+  files.push({
+    path: join(skillDir, '.hardproof-install.json'),
+    content: `${JSON.stringify(manifest(providerName, scope, files, root), null, 2)}\n`,
+  });
 
   for (const target of installTargets(provider, root)) {
     assertReplaceable(target.path, target.kind, options.force);
@@ -238,6 +258,36 @@ export function cmdUninstall(providerName, options) {
   return 0;
 }
 
+export function checkInstall(item) {
+  const manifestPath = join(item.path, '.hardproof-install.json');
+  if (!existsSync(manifestPath)) {
+    return { ok: false, reason: 'manifest missing' };
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  } catch {
+    return { ok: false, reason: 'manifest unreadable' };
+  }
+
+  if (manifest.version !== VERSION) {
+    return { ok: false, reason: `installed ${manifest.version ?? 'unknown'}, CLI ${VERSION}` };
+  }
+
+  for (const file of installFiles(item.provider, item.root)) {
+    const path = relative(item.root, file.path).split('\\').join('/');
+    if (!existsSync(file.path)) {
+      return { ok: false, reason: `missing ${path}` };
+    }
+    if (readFileSync(file.path, 'utf8') !== file.content) {
+      return { ok: false, reason: `changed ${path}` };
+    }
+  }
+
+  return { ok: true, reason: null };
+}
+
 export function detectInstalls(cwd = process.cwd()) {
   const found = [];
   const seen = new Set();
@@ -256,7 +306,7 @@ export function detectInstalls(cwd = process.cwd()) {
       const key = `${scope}:${skillDir}`;
       if (existsSync(skillDir) && !seen.has(key)) {
         seen.add(key);
-        found.push({ provider: name, scope, path: skillDir });
+        found.push({ provider: name, scope, path: skillDir, root });
       }
     }
   }
