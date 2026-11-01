@@ -143,7 +143,7 @@ Options: `--kind` (`bug`, `feature`, `refactor`), `--request` for the user's ver
 
 The verification path varies by host: Claude Code and OpenCode get a native subagent. Codex gets a `hardproof-verifier` skill to invoke in a fresh process. Any host that can read a `SKILL.md` can use the generic install.
 
-`hardproof doctor` regenerates the expected install from the current source and compares it with the installed files. If the source changes and the installed copy does not, it reports `DRIFT`; reinstall the provider to repair it.
+`hardproof doctor` regenerates the expected install from the current source, compares it with the installed files, and checks the payload hashes recorded at install time. If the source changes, the install is edited, or a recorded file is unreadable, it reports `DRIFT`; reinstall the provider to repair it.
 
 ## How the proof works
 

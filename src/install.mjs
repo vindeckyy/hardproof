@@ -271,8 +271,26 @@ export function checkInstall(item) {
     return { ok: false, reason: 'manifest unreadable' };
   }
 
+  if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)) {
+    return { ok: false, reason: 'manifest invalid' };
+  }
   if (manifest.version !== VERSION) {
     return { ok: false, reason: `installed ${manifest.version ?? 'unknown'}, CLI ${VERSION}` };
+  }
+
+  if (manifest.files && typeof manifest.files === 'object') {
+    for (const [path, expected] of Object.entries(manifest.files)) {
+      const absolute = join(item.root, ...path.split('/'));
+      let actual;
+      try {
+        actual = readFileSync(absolute);
+      } catch {
+        return { ok: false, reason: `unreadable ${path}` };
+      }
+      if (hashContent(actual) !== expected) {
+        return { ok: false, reason: `changed ${path}` };
+      }
+    }
   }
 
   for (const file of installFiles(item.provider, item.root)) {
@@ -280,7 +298,13 @@ export function checkInstall(item) {
     if (!existsSync(file.path)) {
       return { ok: false, reason: `missing ${path}` };
     }
-    if (readFileSync(file.path, 'utf8') !== file.content) {
+    let actual;
+    try {
+      actual = readFileSync(file.path, 'utf8');
+    } catch {
+      return { ok: false, reason: `unreadable ${path}` };
+    }
+    if (actual !== file.content) {
       return { ok: false, reason: `changed ${path}` };
     }
   }

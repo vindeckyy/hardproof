@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -151,6 +151,38 @@ test('doctor reports drift from installed edits and from newer source', (t) => {
 
   const sourceDrift = run(['doctor']);
   assert.match(sourceDrift.stdout, /DRIFT: changed skills\/hardproof\/SKILL\.md/);
+});
+
+test('doctor reports unreadable and invalid install payloads as drift', (t) => {
+  const repo = makeRepo(t);
+  const home = tempDir(t);
+  const install = () => cli(['install', 'opencode', '--global'], { cwd: repo, home });
+  assert.equal(install().status, 0);
+
+  const skillDir = join(home, '.config', 'opencode', 'skills', 'hardproof');
+  const skillFile = join(skillDir, 'SKILL.md');
+  const manifestPath = join(skillDir, '.hardproof-install.json');
+
+  rmSync(skillFile, { force: true });
+  mkdirSync(skillFile);
+  const unreadable = cli(['doctor'], { cwd: repo, home });
+  assert.match(unreadable.stdout, /DRIFT: unreadable skills\/hardproof\/SKILL\.md/);
+  assert.doesNotMatch(output(unreadable), /EISDIR|TypeError/);
+
+  rmSync(skillFile, { recursive: true, force: true });
+  assert.equal(install().status, 0);
+  writeFileSync(manifestPath, 'null\n');
+  const invalid = cli(['doctor'], { cwd: repo, home });
+  assert.match(invalid.stdout, /DRIFT: manifest invalid/);
+  assert.doesNotMatch(output(invalid), /TypeError|Cannot read/);
+
+  assert.equal(install().status, 0);
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  manifest.files['skills/hardproof/SKILL.md'] = '0'.repeat(64);
+  writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+
+  const tampered = cli(['doctor'], { cwd: repo, home });
+  assert.match(tampered.stdout, /DRIFT: changed skills\/hardproof\/SKILL\.md/);
 });
 
 test('generic needs a target directory', (t) => {
