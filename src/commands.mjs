@@ -13,6 +13,7 @@ import {
   changedTestFiles,
   contractHash,
   duration,
+  excerpt,
   dirtyTrackedFiles,
   excludeProofDir,
   gitHead,
@@ -188,7 +189,7 @@ export async function cmdInit(options) {
         ok,
         exitCode,
         durationMs,
-        output: tail(output, 40).slice(-4000),
+        output: excerpt(output),
         at: createdAt,
       },
     });
@@ -197,7 +198,7 @@ export async function cmdInit(options) {
     );
     if (!ok && output) {
       console.log(
-        tail(output, 10)
+        excerpt(output, 700, 700)
           .split('\n')
           .map((line) => `          ${line}`)
           .join('\n'),
@@ -516,9 +517,11 @@ export function cmdBrief() {
       `- ${baseline.ok ? 'PASS' : 'FAIL'} \`${check.command}\` (exit ${baseline.exitCode ?? '?'})`,
     );
     if (!baseline.ok && baseline.output) {
-      const lines = tail(baseline.output, 8).split('\n');
+      const lines = baseline.output.split('\n');
+      const sample =
+        lines.length <= 16 ? lines : [...lines.slice(0, 8), '...', ...lines.slice(-8)];
       console.log('  ```');
-      for (const line of lines) console.log(`  ${line}`);
+      for (const line of sample) console.log(`  ${line}`);
       console.log('  ```');
     }
   }

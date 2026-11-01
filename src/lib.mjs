@@ -519,6 +519,12 @@ export async function runChecks(root, task) {
   };
 }
 
+export function excerpt(text, headChars = 1800, tailChars = 1800) {
+  const clean = String(text).trim();
+  if (clean.length <= headChars + tailChars + 5) return clean;
+  return `${clean.slice(0, headChars)}\n...\n${clean.slice(-tailChars)}`;
+}
+
 export function shorten(text, max = 80) {
   const flat = String(text).replace(/\s+/g, ' ').trim();
   return flat.length <= max ? flat : `${flat.slice(0, max - 1)}…`;

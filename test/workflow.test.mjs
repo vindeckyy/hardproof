@@ -320,6 +320,30 @@ test('brief prints the facts a verifier needs', (t) => {
   assert.match(brief.stdout, /test\/regression\.test\.js/);
 });
 
+test('brief shows the start of a long failed baseline output', (t) => {
+  const repo = makeRepo(t);
+  const home = tempDir(t);
+  writeFileSync(
+    join(repo, 'check-long.mjs'),
+    [
+      "console.log('ASSERTION: value is bad');",
+      "for (let i = 0; i < 80; i += 1) console.log(`noise ${i}`);",
+      'process.exit(1);',
+      '',
+    ].join('\n'),
+  );
+
+  const init = cli(
+    ['init', '--goal', 'show the baseline failure', '--check', 'node check-long.mjs'],
+    { cwd: repo, home },
+  );
+  assert.equal(init.status, 0, output(init));
+
+  const brief = cli(['brief'], { cwd: repo, home });
+  assert.equal(brief.status, 0, output(brief));
+  assert.match(brief.stdout, /ASSERTION: value is bad/);
+});
+
 test('editing the contract after init is refused', (t) => {
   const repo = makeRepo(t);
   const home = tempDir(t);

@@ -147,7 +147,7 @@ The verification path varies by host: Claude Code and OpenCode get a native suba
 
 ## How the proof works
 
-- `.proof/task.json` stores the kind, goal, cause, baseline commit, checks, timeout, scope, and baseline result with output. Checks run at the repository root, even when you invoke the CLI from a subdirectory.
+- `.proof/task.json` stores the kind, goal, cause, baseline commit, checks, timeout, scope, and baseline result with an output excerpt from both ends. Checks run at the repository root, even when you invoke the CLI from a subdirectory.
 - `.proof/verdict.json` stores the verdict, findings, test review, verifier name, contract hash, and a hash of the working tree.
 - `.proof/gate.json` is the final evidence artifact.
 - `init` also locks the contract. Editing `.proof/task.json` afterwards is refused by the CLI, so accidental check drift fails closed.
