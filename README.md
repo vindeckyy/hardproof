@@ -152,7 +152,7 @@ The verification path varies by host: Claude Code and OpenCode get a native suba
 - `.proof/gate.json` is the final evidence artifact.
 - `init` also locks the contract. Editing `.proof/task.json` afterwards is refused by the CLI, so accidental check drift fails closed.
 
-The tree hash covers the baseline commit, `HEAD`, and every changed, staged, deleted, and untracked file since the baseline, excluding `.proof/`. Commits made during a run are still measured. If the code changes after the verifier signs off, the old verdict no longer matches and the gate fails. If the contract changes, the verdict is stale too. If a check mutates tracked files while the gate runs, the gate fails rather than certifying a moving target.
+The tree hash covers the baseline commit and every changed, staged, deleted, and untracked file since the baseline, excluding `.proof/`. Commits made during a run are still measured, and committing the verified tree unchanged keeps the verdict fresh. If HEAD moves, the gate requires a clean working tree, so the commit must contain every verified byte; a partial commit or a divergent index fails. If the code changes after the verifier signs off, the old verdict no longer matches and the gate fails. If the contract changes, the verdict is stale too. If a check mutates tracked files while the gate runs, the gate fails rather than certifying a moving target.
 
 `.proof/` is added to `.git/info/exclude` by `init`, so evidence stays local and does not pollute commits.
 

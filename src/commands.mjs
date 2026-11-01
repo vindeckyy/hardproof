@@ -27,6 +27,7 @@ import {
   shorten,
   tail,
   treeHash,
+  worktreeClean,
   writeJson,
 } from './lib.mjs';
 import { checkInstall, detectInstalls } from './install.mjs';
@@ -137,6 +138,13 @@ export async function cmdInit(options) {
     );
   }
 
+  const baseHead = gitHead(root);
+  if (baseHead === 'unborn') {
+    throw new UserError(
+      'the repository has no commits. Make an initial commit before init, so the proof has a baseline boundary.',
+    );
+  }
+
   const dirty = dirtyTrackedFiles(root);
   const dirtyTests = dirty.filter((path) => isTestPath(path));
   const dirtyProduction = dirty.filter((path) => !isTestPath(path));
@@ -212,7 +220,7 @@ export async function cmdInit(options) {
   const task = {
     schema: 1,
     kind,
-    baseHead: gitHead(root),
+    baseHead,
     dirtyStart: dirty.length > 0,
     request,
     goal,
@@ -323,6 +331,7 @@ export function cmdVerdict(positionals, options) {
     testReview: testReview || null,
     verifier: (options.verifier ?? process.env.HARDPROOF_VERIFIER ?? 'verifier').trim(),
     tree: treeHash(root, task.baseHead),
+    head: gitHead(root),
     contract: contractHash(task),
     at: new Date().toISOString(),
   };
@@ -338,9 +347,12 @@ export function cmdVerdict(positionals, options) {
   return 0;
 }
 
-function verdictProblem(verdict, tree, contract, testFiles) {
+function verdictProblem(verdict, tree, contract, testFiles, root) {
   if (!verdict) return 'verifier has not recorded a verdict';
   if (verdict.schema !== 1) return 'verdict schema is unsupported; run the verifier again';
+  if (typeof verdict.head !== 'string' || !verdict.head) {
+    return 'verdict has no commit binding; run the verifier again';
+  }
   if (verdict.tree !== tree) return 'verdict is stale: the tree changed after verification';
   if (verdict.contract !== contract) {
     return 'verdict is stale: the contract changed after verification';
@@ -357,6 +369,9 @@ function verdictProblem(verdict, tree, contract, testFiles) {
       return 'test files changed; verifier did not certify a test review';
     }
   }
+  if (verdict.head !== gitHead(root) && !worktreeClean(root)) {
+    return 'HEAD moved since verification and the working tree is not clean; commit every verified change or re-verify';
+  }
   return null;
 }
 
@@ -368,7 +383,7 @@ export async function cmdGate(options) {
   const contract = contractHash(task);
   const verdict = readJson(proofPath(root, VERDICT_FILE));
   const testFiles = changedTestFiles(root, task.baseHead);
-  const problem = verdictProblem(verdict, tree, contract, testFiles);
+  const problem = verdictProblem(verdict, tree, contract, testFiles, root);
 
   if (problem) {
     writeJson(proofPath(root, GATE_FILE), {
@@ -605,6 +620,7 @@ export function cmdDoctor(options) {
               scope: task.scope,
             }),
             changedTestFiles(root, task.baseHead),
+            root,
           )
         : 'contract is invalid';
 

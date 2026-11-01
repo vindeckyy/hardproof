@@ -174,13 +174,29 @@ function hashDirectory(hash, directory, state, relativeRoot) {
   addField(hash, 'end');
 }
 
+export function worktreeClean(root) {
+  const raw = execFileSync(
+    'git',
+    ['status', '--porcelain=v1', '-z', '--untracked-files=all'],
+    { cwd: root, stdio: ['ignore', 'pipe', 'ignore'] },
+  ).toString('utf8');
+
+  return raw.split('\0').every((item) => {
+    if (!item) return true;
+    const path = item.slice(3);
+    return path === PROOF_DIR || path.startsWith(`${PROOF_DIR}/`);
+  });
+}
+
 export function treeHash(root, baseHead = null) {
   const hash = createHash('sha256');
-  addField(hash, 'hardproof-tree-v3');
+  addField(hash, 'hardproof-tree-v5');
   addField(hash, 'base');
   addField(hash, baseHead ?? '');
-  addField(hash, 'head');
-  addField(hash, gitHead(root));
+  if (!baseHead || baseHead === 'unborn') {
+    addField(hash, 'head');
+    addField(hash, gitHead(root));
+  }
 
   let submodules = '';
   try {

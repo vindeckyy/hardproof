@@ -401,6 +401,92 @@ test('scope breach blocks the gate unless explicitly allowed', (t) => {
   assert.equal(allowedGate.status, 0, output(allowedGate));
 });
 
+test('a verdict survives committing the verified tree unchanged', (t) => {
+  const repo = makeRepo(t);
+  const home = tempDir(t);
+  cli(['init', '--goal', 'make value good', '--check', 'node check.mjs'], { cwd: repo, home });
+  writeFileSync(join(repo, 'value.txt'), 'good\n');
+  assert.equal(cli(['check'], { cwd: repo, home }).status, 0);
+  assert.equal(
+    cli(['verdict', 'pass', '--summary', 'ran the acceptance check'], { cwd: repo, home }).status,
+    0,
+  );
+  assert.equal(cli(['gate'], { cwd: repo, home }).status, 0);
+
+  execFileSync('git', ['add', '-A'], { cwd: repo });
+  execFileSync(
+    'git',
+    ['-c', 'user.email=test@example.com', '-c', 'user.name=Test', 'commit', '-q', '-m', 'verify'],
+    { cwd: repo },
+  );
+
+  const after = cli(['gate'], { cwd: repo, home });
+  assert.equal(after.status, 0, output(after));
+});
+
+test('a partial commit does not keep the verdict fresh', (t) => {
+  const repo = makeRepo(t);
+  const home = tempDir(t);
+  cli(['init', '--goal', 'make value good', '--check', 'node check.mjs'], { cwd: repo, home });
+  writeFileSync(join(repo, 'value.txt'), 'good\n');
+  writeFileSync(join(repo, 'helper.js'), 'export const helper = true;\n');
+  assert.equal(cli(['check'], { cwd: repo, home }).status, 0);
+  assert.equal(
+    cli(['verdict', 'pass', '--summary', 'ran the acceptance check'], { cwd: repo, home }).status,
+    0,
+  );
+
+  execFileSync('git', ['add', 'value.txt'], { cwd: repo });
+  execFileSync(
+    'git',
+    ['-c', 'user.email=test@example.com', '-c', 'user.name=Test', 'commit', '-q', '-m', 'partial'],
+    { cwd: repo },
+  );
+
+  const gate = cli(['gate'], { cwd: repo, home });
+  assert.equal(gate.status, 1);
+  assert.match(output(gate), /working tree is not clean/);
+});
+
+test('a commit with different bytes does not keep the verdict fresh', (t) => {
+  const repo = makeRepo(t);
+  const home = tempDir(t);
+  cli(['init', '--goal', 'make value good', '--check', 'node check.mjs'], { cwd: repo, home });
+  writeFileSync(join(repo, 'value.txt'), 'good\n');
+  assert.equal(cli(['check'], { cwd: repo, home }).status, 0);
+  assert.equal(
+    cli(['verdict', 'pass', '--summary', 'ran the acceptance check'], { cwd: repo, home }).status,
+    0,
+  );
+
+  writeFileSync(join(repo, 'value.txt'), 'evil\n');
+  execFileSync('git', ['add', 'value.txt'], { cwd: repo });
+  writeFileSync(join(repo, 'value.txt'), 'good\n');
+  execFileSync(
+    'git',
+    ['-c', 'user.email=test@example.com', '-c', 'user.name=Test', 'commit', '-q', '-m', 'divergent'],
+    { cwd: repo },
+  );
+
+  const gate = cli(['gate'], { cwd: repo, home });
+  assert.equal(gate.status, 1);
+  assert.match(output(gate), /working tree is not clean/);
+});
+
+test('init refuses a repository with no baseline commit', (t) => {
+  const repo = tempDir(t);
+  const home = tempDir(t);
+  execFileSync('git', ['init', '-q'], { cwd: repo });
+  writeFileSync(join(repo, 'check.mjs'), 'process.exit(1);\n');
+
+  const result = cli(
+    ['init', '--goal', 'make value good', '--check', 'node check.mjs'],
+    { cwd: repo, home },
+  );
+  assert.equal(result.status, 1);
+  assert.match(output(result), /no commits/);
+});
+
 test('committed out-of-scope changes still fail the scope check', (t) => {
   const repo = makeRepo(t);
   const home = tempDir(t);
