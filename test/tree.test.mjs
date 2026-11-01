@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
-import { isTestPath, matchesScope, runCommand, treeHash } from '../src/lib.mjs';
+import { gitHead, isTestPath, matchesScope, runCommand, treeHash } from '../src/lib.mjs';
 import { cli, makeRepo, tempDir } from '../test-support/helpers.mjs';
 
 test('tree hash tracks changed and untracked files but ignores .proof', (t) => {
@@ -42,6 +42,16 @@ test('tree hash tracks renames, deletions, and untracked directories', (t) => {
 
   writeFileSync(join(nested, 'file.txt'), 'two\n');
   assert.notEqual(treeHash(repo), withNested);
+});
+
+test('tree hash includes the executable bit', (t) => {
+  if (process.platform === 'win32') return;
+  const repo = makeRepo(t);
+  writeFileSync(join(repo, 'src', 'app.js'), 'export const value = 2;\n');
+  const before = treeHash(repo, gitHead(repo));
+
+  chmodSync(join(repo, 'src', 'app.js'), 0o755);
+  assert.notEqual(treeHash(repo, gitHead(repo)), before);
 });
 
 test('a timed out check resolves even when a child holds stdout', async (t) => {

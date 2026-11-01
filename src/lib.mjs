@@ -167,6 +167,8 @@ function hashDirectory(hash, directory, state, relativeRoot) {
     } else if (entry.isDirectory()) {
       hashDirectory(hash, absolute, state, relativePath);
     } else {
+      addField(hash, 'mode');
+      addField(hash, lstatSync(absolute).mode & 0o111 ? 'exec' : 'plain');
       addField(hash, 'file');
       addField(hash, readFileSync(absolute));
     }
@@ -190,7 +192,7 @@ export function worktreeClean(root) {
 
 export function treeHash(root, baseHead = null) {
   const hash = createHash('sha256');
-  addField(hash, 'hardproof-tree-v5');
+  addField(hash, 'hardproof-tree-v6');
   addField(hash, 'base');
   addField(hash, baseHead ?? '');
   if (!baseHead || baseHead === 'unborn') {
@@ -232,6 +234,8 @@ export function treeHash(root, baseHead = null) {
     } else if (stat.isFile()) {
       // Shortcut: hashes whole changed files. Large generated files make this
       // slower; cheap enough for normal source diffs.
+      addField(hash, 'mode');
+      addField(hash, stat.mode & 0o111 ? 'exec' : 'plain');
       addField(hash, 'file');
       addField(hash, readFileSync(absolute));
     } else {
