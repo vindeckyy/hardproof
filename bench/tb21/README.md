@@ -65,3 +65,16 @@ Start with 5-10 tasks across software engineering, data, and security. Compare:
 - per-task pass, timeout rate, token use, wall time
 
 A single 89-task run has roughly ±3 points of noise. A 15-point claim needs 5 trials and per-task evidence.
+
+## Pilot result: 2026-11-02
+
+Task: `cancel-async-tasks`, local arm64 task image, DeepSeek V4.1 Flash, one trial.
+
+| Condition | Reward | Wall time | Tokens |
+|---|---:|---:|---:|
+| OpenCode baseline | 1.0 | 2m21s | 80.5k |
+| hardproof ensemble | 0.0 | ~10m | 231.7k |
+
+The ensemble failed `test_tasks_cancel_above_max_concurrent`: it printed two started tasks but zero cleanup lines. Both candidates passed the generated self-checks; those checks covered cancellation at/below the limit but not the queued-task case. The baseline model's own solution passed the hidden suite.
+
+This is a negative result for the first ensemble version. It identifies the missing piece: an independent test writer and verifier that targets queued cancellation, partial failure, and cleanup ordering. Do not claim benchmark gains from this pilot.
