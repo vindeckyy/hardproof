@@ -17,6 +17,8 @@ OPENCODE_API_KEY=<key>
 OPENAI_API_KEY=<key>
 ```
 
+Pass `--api-key-name OPENCODE_API_KEY` to Harbor; otherwise the built-in OpenCode Go provider receives no credential.
+
 Prepare the skill bundle Harbor injects:
 
 ```sh
@@ -41,6 +43,18 @@ harbor run \
 ```
 
 For a full run, drop `-i` and use `-k 5` as required by Terminal-Bench. Standard timeouts only; do not inflate them.
+
+## Apple Silicon note
+
+Most Terminal-Bench task images are `linux/amd64`. OpenCode's Bun binary crashes under QEMU without AVX. Build an arm64 variant of the task image and point a local task copy at it:
+
+```sh
+docker build --platform linux/arm64 -t hp/task:arm64 <task>/environment
+# set docker_image = "hp/task:arm64" in the local task.toml
+harbor run -p <task-dir> ...
+```
+
+This is a local pilot workaround, not a leaderboard-comparable configuration.
 
 ## Pilot
 

@@ -292,21 +292,32 @@ function runChecks(cwd) {
   );
 }
 
-function diffStat(cwd) {
+function stageChanges(cwd) {
   git(['add', '-A'], cwd);
+  for (const junk of ['__pycache__', '.pytest_cache', '.mypy_cache']) {
+    try {
+      git(['reset', '-q', '--', junk], cwd);
+    } catch {
+      // The cache directory is optional.
+    }
+  }
+}
+
+function diffStat(cwd) {
+  stageChanges(cwd);
   const numstat = git(['diff', '--cached', '--numstat', base], cwd).trim();
   if (!numstat) return { files: 0, lines: 0 };
   const rows = numstat.split('\n').filter(Boolean);
   let lines = 0;
   for (const row of rows) {
     const [added, removed] = row.split('\t');
-    lines += Number(added) + Number(removed);
+    lines += (Number(added) || 0) + (Number(removed) || 0);
   }
   return { files: rows.length, lines };
 }
 
 function applyCandidate(cwd) {
-  git(['add', '-A'], cwd);
+  stageChanges(cwd);
   const patch = git(['diff', '--cached', base, '--binary'], cwd);
   if (!patch.trim()) {
     if (process.env.HARDPROOF_DEBUG) {
@@ -359,9 +370,9 @@ function permissionFlags() {
       return ['--dangerously-skip-permissions'];
     }
   } catch {
-    // Fall through to the current CLI default.
+    // Older CLIs do not print the flag in help.
   }
-  return [];
+  return ['--dangerously-skip-permissions'];
 }
 
 function shellQuote(value) {
