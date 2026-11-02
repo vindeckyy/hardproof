@@ -16,6 +16,8 @@ test('installs the skill and a read-only verifier for each provider', (t) => {
   const claudeAgent = join(home, '.claude', 'agents', 'hardproof-verifier.md');
   assert.equal(existsSync(claudeSkill), true);
   assert.equal(existsSync(join(home, '.claude', 'skills', 'hardproof', 'references', 'verifier.md')), true);
+  assert.equal(existsSync(join(home, '.claude', 'skills', 'hardproof', 'scripts', 'ensemble.mjs')), true);
+  assert.equal(existsSync(join(home, '.claude', 'skills', 'hardproof', 'ENSEMBLE.md')), true);
   assert.match(readFileSync(claudeAgent, 'utf8'), /^---\nname: hardproof-verifier/m);
   assert.match(readFileSync(claudeAgent, 'utf8'), /tools: Read, Grep, Glob, Bash/);
   assert.match(readFileSync(claudeAgent, 'utf8'), /managed by hardproof/);

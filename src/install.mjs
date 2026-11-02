@@ -180,7 +180,9 @@ function installFiles(providerName, root) {
   const skillDir = join(root, 'skills', SKILL_NAME);
   const files = [
     { path: join(skillDir, 'SKILL.md'), content: readSkill('SKILL.md') },
+    { path: join(skillDir, 'ENSEMBLE.md'), content: readSkill('ENSEMBLE.md') },
     { path: join(skillDir, 'references', 'verifier.md'), content: verifier },
+    { path: join(skillDir, 'scripts', 'ensemble.mjs'), content: readSkill('scripts/ensemble.mjs') },
   ];
 
   if (provider.agent === 'claude') {

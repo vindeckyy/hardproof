@@ -168,6 +168,24 @@ The tree hash covers the baseline commit, file contents, executable bits, and ev
 - **Check quality is still on you.** `init` warns about commands that always pass (`true`, `|| true`, `--passWithNoTests`), but it cannot tell whether a real command tests the right behavior.
 - **No benchmark numbers.** Measuring agent reliability is a real experiment. This repository does not pretend to have run it.
 
+## Ensemble mode
+
+For a scored run, `skill/scripts/ensemble.mjs` runs independent candidates in git worktrees, checks them, and applies the best patch:
+
+```sh
+node skill/scripts/ensemble.mjs \
+  --goal "make the retry path idempotent" \
+  --request "<task instruction>" \
+  --check "npm test -- retry" \
+  --check "npm run typecheck" \
+  --candidates 3 \
+  --timeout 420
+```
+
+Candidates use different strategies: direct, test-first, plan-heavy, and minimal-diff. The selected patch must pass the checks before the script exits `0`. Logs and the selected patch stay under `.hardproof/ensemble/`.
+
+The runner uses `opencode run --auto` by default. Pass `--model provider/model` when the agent's default is not the benchmark model, or `--agent-cmd "<command>"` for another CLI that accepts the prompt as its last argument.
+
 ## Measuring it
 
 No benchmark number is bundled. To measure the effect on your own work, replay ten bugs you already fixed, with hidden tests the agent cannot edit, and compare pass@1 with and without the hardproof loop. Keep the hidden tests outside the working tree and run them after the agent stops. That measures the workflow; the gate's own PASS is not a model benchmark.

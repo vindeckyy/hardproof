@@ -98,6 +98,10 @@ Run `hardproof gate`. Then report, in this order:
 
 Quote the gate result. If the gate fails, say the work is unverified and why.
 
+## Ensemble mode
+
+For an explicitly scored or max-score run, or when `HARDPROOF_ENSEMBLE=1`, read `ENSEMBLE.md` before solving. The ensemble runner creates three independent candidates in worktrees, runs the checks, and applies the best one. Do not skip it for a scored task.
+
 ## Larger work
 
 If the request contains independent workstreams, split it into one contract per workstream. Run each loop separately, with one writer per workstream, then add an integration contract whose checks exercise the combined behavior. Never let two writers own the same files, and do not start a new contract until the previous one has a verdict or is abandoned.
